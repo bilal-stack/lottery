@@ -49,16 +49,10 @@ class UsaLotteryScraper
             $crawler = $this->scrapeRequest("https://lotterypost.com/results/" . $state->code);
             //$crawler = $this->scrapeRequest("https://lotterypost.com/results/al");
 
-            $notFound = $crawler->filter('#content')->each(function ($content) {
-                $content->filter('h1 > .main')->each(function ($content) {
-                    if ($content->text() == 'Page not found') {
-                        return true;
-                    }
-                    return false;
-                });
-            });
+            $notFound = $this->checkForNotFoundPage($crawler);
 
-            if (!$notFound) {
+            if ($notFound) {
+                dd($notFound, $crawler);
                 break;
             }
 
@@ -108,29 +102,32 @@ class UsaLotteryScraper
                         }
                     }
 
-                    $counter++;
+                    $lottery = Lottery::where('slug', $slug)->where('state', $stateCode)->exists();
 
-                    $lottery = Lottery::firstOrCreate(
-                        [
-                            'country' => 'us',
-                            'name' => trim($name),
-                            'state' => $stateCode,
-                            'bonus_balls_to_pick' => $bonusBalls,
-                            'bonus_balls_name' => $bonusBallsName
-                        ],
-                        [
-                            'slug' => $slug
-                        ]
-                    );
+                    if (!$lottery) {
+                        $counter++;
+                        $lottery = Lottery::firstOrCreate(
+                            [
+                                'country' => 'us',
+                                'name' => trim($name),
+                                'state' => $stateCode,
+                                'bonus_balls_to_pick' => $bonusBalls,
+                                'bonus_balls_name' => $bonusBallsName
+                            ],
+                            [
+                                'slug' => $slug
+                            ]
+                        );
 
-                    $lottery->results()->create([
-                        'draw_date' => $drawDate,
-                        'balls' => json_encode($balls),
-                        'ball_bonus' => $bonusBalls,
-                        'jackpot' => (int)$jackpot
-                    ]);
+                        $lottery->results()->create([
+                            'draw_date' => $drawDate,
+                            'balls' => json_encode($balls),
+                            'ball_bonus' => $bonusBalls,
+                            'jackpot' => (int)$jackpot
+                        ]);
 
-                    echo "[" . date('d-M-Y H:i:s') . "] " . sprintf('[%d] Country: %s State: %s Lottery: %s [%s]', $counter, $lottery->country, $lottery->state, $lottery->name, $lottery->slug) . "\n";
+                        //echo "[" . date('d-M-Y H:i:s') . "] " . sprintf('[%d] Country: %s State: %s Lottery: %s [%s]', $counter, $lottery->country, $lottery->state, $lottery->name, $lottery->slug) . "\n";
+                    }
                 });
             });
         }
@@ -386,6 +383,11 @@ class UsaLotteryScraper
         }
     }
 
+    private function checkForNotFoundPage($crawler)
+    {
+        return $crawler->filter('h1 > .main')->getNode(0);
+    }
+
     private function checkFor404Page($crawler)
     {
         return $crawler->filter('.pagenotfound-title')->getNode(0);
@@ -430,62 +432,5 @@ class UsaLotteryScraper
             exit('[scraperapi.com] Request Limit Reached for KEY: ' . config('scraper.key'));
         }
         return $crawler;
-    }
-
-    private function getStates()
-    {
-        return [
-            'AL' => "Alabama",
-            'AK' => "Alaska",
-            'AZ' => "Arizona",
-            'AR' => "Arkansas",
-            'CA' => "California",
-            'CO' => "Colorado",
-            'CT' => "Connecticut",
-            'DE' => "Delaware",
-            'DC' => "District Of Columbia",
-            'FL' => "Florida",
-            'GA' => "Georgia",
-            'HI' => "Hawaii",
-            'ID' => "Idaho",
-            'IL' => "Illinois",
-            'IN' => "Indiana",
-            'IA' => "Iowa",
-            'KS' => "Kansas",
-            'KY' => "Kentucky",
-            'LA' => "Louisiana",
-            'ME' => "Maine",
-            'MD' => "Maryland",
-            'MA' => "Massachusetts",
-            'MI' => "Michigan",
-            'MN' => "Minnesota",
-            'MS' => "Mississippi",
-            'MO' => "Missouri",
-            'MT' => "Montana",
-            'NE' => "Nebraska",
-            'NV' => "Nevada",
-            'NH' => "New Hampshire",
-            'NJ' => "New Jersey",
-            'NM' => "New Mexico",
-            'NY' => "New York",
-            'NC' => "North Carolina",
-            'ND' => "North Dakota",
-            'OH' => "Ohio",
-            'OK' => "Oklahoma",
-            'OR' => "Oregon",
-            'PA' => "Pennsylvania",
-            'RI' => "Rhode Island",
-            'SC' => "South Carolina",
-            'SD' => "South Dakota",
-            'TN' => "Tennessee",
-            'TX' => "Texas",
-            'UT' => "Utah",
-            'VT' => "Vermont",
-            'VA' => "Virginia",
-            'WA' => "Washington",
-            'WV' => "West Virginia",
-            'WI' => "Wisconsin",
-            'WY' => "Wyoming"
-        ];
     }
 }

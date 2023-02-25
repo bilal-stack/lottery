@@ -80,7 +80,14 @@
                                             </td>
                                             <td>
                                                 <ul class="number-list">
-                                                    @foreach($line->balls as $key => $ball)
+
+                                                    @php
+                                                        $balls = json_decode($line->balls);
+                                                        if ($balls === FALSE) {
+                                                            $balls = $line->balls;
+                                                        }
+                                                    @endphp
+                                                    @foreach($balls as $key => $ball)
                                                         <li>{{ $ball }}</li>
                                                     @endforeach
                                                     @if($line->ball_bonus)

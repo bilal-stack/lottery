@@ -36,7 +36,7 @@ class ScraperController extends Controller
 
     public function scrapeUsaLotteryNumbers(Request $request, UsaLotteryScraper $usaLotteryScraper)
     {
-        $count = $usaLotteryScraper->scrapeLotteryNumbers();
+        //$count = $usaLotteryScraper->scrapeLotteryNumbers();
         return redirect()->route('scraper')->with('success', 'All USA Lotteries numbers scraped.');
     }
 }
