@@ -37,7 +37,7 @@ class UsaLotteryScraper
 
     public function scrapeLotteries()
     {
-        ini_set('max_execution_time', 180); //3 minutes
+        ini_set('max_execution_time', 280); //4 minutes
 
         // $crawler = Goutte::request('GET', "https://lottery.com/us-lotteries/");
 
@@ -61,15 +61,15 @@ class UsaLotteryScraper
             $crawler->filter('.resultsgame')->each(function ($node) use (&$counter, &$stateCode) {
                 $node->filter('.resultsdrawing')->each(function ($content) use (&$counter, &$stateCode) {
 
-                    $name = '';
+                    $name = null;
                     if ($content->filter('h2')->count() > 0) $name = $content->filter('h2')->text();
 
-                    $drawDate = '';
+                    $drawDate = null;
                     if ($content->filter('time')->count() > 0) $drawDate = $content->filter('time')->attr('datetime');
 
                     //$drawDate = $content->filter('.resultsnextdate')->text();
 
-                    $jackpot = '';
+                    $jackpot = null;
                     if ($content->filter('.resultsJackpotAmount > span > span')->count() > 0) $jackpot = $content->filter('.resultsJackpotAmount > span > span')->text();
 
                     $balls = [];
@@ -105,26 +105,28 @@ class UsaLotteryScraper
                     $lottery = Lottery::where('slug', $slug)->where('state', $stateCode)->exists();
 
                     if (!$lottery) {
-                        $counter++;
-                        $lottery = Lottery::firstOrCreate(
-                            [
-                                'country' => 'us',
-                                'name' => trim($name),
-                                'state' => $stateCode,
-                                'bonus_balls_to_pick' => $bonusBalls,
-                                'bonus_balls_name' => $bonusBallsName
-                            ],
-                            [
-                                'slug' => $slug
-                            ]
-                        );
+                        if (null !== $name & !empty($balls)) {
+                            $counter++;
+                            $lottery = Lottery::firstOrCreate(
+                                [
+                                    'country' => 'us',
+                                    'name' => trim($name),
+                                    'state' => $stateCode,
+                                    'bonus_balls_to_pick' => $bonusBalls,
+                                    'bonus_balls_name' => $bonusBallsName
+                                ],
+                                [
+                                    'slug' => $slug
+                                ]
+                            );
 
-                        $lottery->results()->create([
-                            'draw_date' => $drawDate,
-                            'balls' => json_encode($balls),
-                            'ball_bonus' => $bonusBalls,
-                            'jackpot' => (int)$jackpot
-                        ]);
+                            $lottery->results()->create([
+                                'draw_date' => $drawDate,
+                                'balls' => json_encode($balls),
+                                'ball_bonus' => $bonusBalls,
+                                'jackpot' => (int)$jackpot
+                            ]);
+                        }
 
                         //echo "[" . date('d-M-Y H:i:s') . "] " . sprintf('[%d] Country: %s State: %s Lottery: %s [%s]', $counter, $lottery->country, $lottery->state, $lottery->name, $lottery->slug) . "\n";
                     }
